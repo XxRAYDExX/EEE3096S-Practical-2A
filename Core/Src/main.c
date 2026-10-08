@@ -3,9 +3,9 @@
   * EEE3096S 2026 - Practical 2A
   * Memory-Mapped I/O and Hardware SPI - building an EEPROM driver
   *
-  * Student 1 : <name>  <student number>
-  * Student 2 : <name>  <student number>
-  * Date      : <date>
+  * Student 1 : <Raman Raja>  <RJXRAM001>
+  * Student 2 : <Rojan Jameson>  <JMSROJ001>
+  * Date      : <08/10/2026>
   *
   * Board : UCT Development Board, STM32F051C8
   *
@@ -28,7 +28,7 @@
 
 #include "prac2a.h"
 
-#define RUN_TASK    1
+#define RUN_TASK    2
 
 volatile uint8_t run_task = RUN_TASK;
 
