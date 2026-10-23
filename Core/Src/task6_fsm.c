@@ -52,7 +52,11 @@ volatile uint8_t ee_state       = (uint8_t)EE_STATE_IDLE;
 volatile uint8_t ee_last_read   = 0u;
 volatile uint8_t ee_use_fsm     = 1u;
 
+volatile uint32_t ee_dwell_ms   = 0u;
+
 static uint32_t write_start_ms  = 0u;
+static uint32_t state_entry_ms  = 0u;
+static uint8_t  prev_state      = 0xFFu;
 
 void update_eeprom_state_machine(uint32_t now)
 {
@@ -69,15 +73,37 @@ void update_eeprom_state_machine(uint32_t now)
      *   - Store the byte read back in ee_last_read.
      *   - Clear each button edge once you have acted on it. */
 
+    uint8_t active = (ee_state >= (uint8_t)EE_STATE_WREN) &&
+                     (ee_state <= (uint8_t)EE_STATE_VERIFY);
+
     if (btn_abort_edge)
     {
         btn_abort_edge = 0u;
-        if (ee_state != (uint8_t)EE_STATE_IDLE && ee_state != (uint8_t)EE_STATE_ABORTED)
+        if (active)
         {
             eeprom_cs_high();
             ee_state = (uint8_t)EE_STATE_ABORTED;
             return;
         }
+    }
+
+    if (active)
+    {
+        btn_start_edge = 0u;
+    }
+
+    if (ee_state != prev_state)
+    {
+        prev_state     = ee_state;
+        state_entry_ms = now;
+    }
+    if (((ee_state == (uint8_t)EE_STATE_WREN)  ||
+         (ee_state == (uint8_t)EE_STATE_WRITE) ||
+         (ee_state == (uint8_t)EE_STATE_READ)  ||
+         (ee_state == (uint8_t)EE_STATE_VERIFY)) &&
+        ((uint32_t)(now - state_entry_ms) < ee_dwell_ms))
+    {
+        return;
     }
 
     switch ((ee_state_t)ee_state)
