@@ -87,7 +87,6 @@ void eeprom_write_byte(uint16_t address, uint8_t value)
         uint8_t status = eeprom_read_status();
         if ((status & EEPROM_SR_RDY) == 0u)
         {
-            /* Write complete: busy bit is 0 */
             break;
         }
 

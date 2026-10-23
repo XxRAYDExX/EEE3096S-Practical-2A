@@ -69,13 +69,12 @@ void update_eeprom_state_machine(uint32_t now)
      *   - Store the byte read back in ee_last_read.
      *   - Clear each button edge once you have acted on it. */
 
-    /* Global Abort handler: PA3 immediately terminates an active transaction */
     if (btn_abort_edge)
     {
         btn_abort_edge = 0u;
         if (ee_state != (uint8_t)EE_STATE_IDLE && ee_state != (uint8_t)EE_STATE_ABORTED)
         {
-            eeprom_cs_high(); /* Ensure CS is released high for next transaction */
+            eeprom_cs_high();
             ee_state = (uint8_t)EE_STATE_ABORTED;
             return;
         }
@@ -95,13 +94,11 @@ void update_eeprom_state_machine(uint32_t now)
         break;
 
     case EE_STATE_WREN:
-        /* Send Write Enable (WREN) instruction and pulse CS high */
         eeprom_write_enable();
         ee_state = (uint8_t)EE_STATE_WRITE;
         break;
 
     case EE_STATE_WRITE:
-        /* Initiate write cycle: send WRITE opcode, 2-byte address, and data byte */
         eeprom_cs_low();
         spi_transfer(EEPROM_CMD_WRITE);
         spi_transfer((uint8_t)(eeprom_test_addr >> 8));
@@ -114,37 +111,30 @@ void update_eeprom_state_machine(uint32_t now)
         break;
 
     case EE_STATE_POLL_BUSY:
-        /* Non-blocking write-completion check */
         if ((uint32_t)(now - write_start_ms) >= EEPROM_WRITE_TIMEOUT_MS)
         {
-            /* Write timeout exceeded */
             eeprom_timeout_count++;
             eeprom_verify_ok = 0u;
             ee_state = (uint8_t)EE_STATE_FAILURE;
         }
         else
         {
-            /* Read status register non-blockingly */
             uint8_t status = eeprom_read_status();
             if ((status & EEPROM_SR_RDY) == 0u)
             {
-                /* Busy bit cleared: write cycle completed */
                 eeprom_write_wait_ms = (uint32_t)(now - write_start_ms);
                 ee_state = (uint8_t)EE_STATE_READ;
             }
-            /* Otherwise EEPROM is still busy: return immediately so main loop continues */
         }
         break;
 
     case EE_STATE_READ:
-        /* Read back data from EEPROM */
         ee_last_read = eeprom_read_byte(eeprom_test_addr);
         eeprom_read_value = ee_last_read;
         ee_state = (uint8_t)EE_STATE_VERIFY;
         break;
 
     case EE_STATE_VERIFY:
-        /* Verify read-back value against written test byte */
         if (ee_last_read == eeprom_test_byte)
         {
             eeprom_verify_ok = 1u;
@@ -170,10 +160,8 @@ void update_outputs(void)
      *           (status_leds_show). Decide what the status LEDs should show
      *           while a transaction is in progress, and after an abort. */
 
-    /* Data display: PB0..PB7 show the byte read from EEPROM */
     leds_write_byte(ee_last_read);
 
-    /* Status LEDs: PB11 (green) for PASS, PB10 (red) for FAIL */
     switch ((ee_state_t)ee_state)
     {
     case EE_STATE_SUCCESS:
@@ -185,7 +173,6 @@ void update_outputs(void)
         break;
 
     case EE_STATE_IDLE:
-        /* At boot-time or idle, show pass if persistence test verified */
         status_leds_show(eeprom_verify_ok ? STATUS_PASS : STATUS_OFF);
         break;
 
@@ -196,7 +183,6 @@ void update_outputs(void)
     case EE_STATE_READ:
     case EE_STATE_VERIFY:
     default:
-        /* Both LEDs OFF while in progress or after abort */
         status_leds_show(STATUS_OFF);
         break;
     }
